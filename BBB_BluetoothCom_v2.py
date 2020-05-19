@@ -15,38 +15,40 @@ class BluetoothServer:
 
     def __init__(self):
         self.sensor_count = 0
+        self.building_number = " "
 
     def inc_count(self):
         self.sensor_count += 1
 
-    def toggleLed(self, target):
-        if target == 'green':
+    def toggleCmd(self, target):
+        if target == 'ventilation':
             #print('toggle green')
             self.green_led.toggleGpioValue()
         elif target == 'sensor':
             #print('toggle red')
-            self.red_led.toggleGpioValue()
-        elif target == 'receive_data':
+            self.sensor.toggleGpioValue()
+            # getting just the first bit of receive data, second part of string will determine building name
+        elif target[0:12] == 'receive_data':
             #print('sending pot data')
             self.pot_on.toggleGpioValue()
+            #get the building number
+            self.building_number = target[13:]
         else:
             print('unknown remote command')
 
     def send_ventilation(self, client_sock):
-        print("What building are you monitoring? ")
-        building_number = input()
-
         while True:
             if self.pot_on.getGpioValue() == 1:
                 sens_val = ADC.read(self.analog_pin_VENTILATION)
                 print('The ventilation value is: ', sens_val)
-                sendData = " ".join([str(building_number), str(self.sensor_count), str(sens_val)])
+                sendData = " ".join([str(self.building_number), str(self.sensor_count), str(sens_val)])
                 client_sock.send(sendData)
+                print("sent data for building" + self.building_number)
                 sleep(3)
 
     def send_sensor(self, client_sock):
         while True:
-            if self.red_led.getGpioValue() == 1:
+            if self.sensor.getGpioValue() == 1:
                 if ADC.read(self.analog_pin_SENSOR) == 1:
                     self.inc_count()
                     print("Traffic Count: ", self.sensor_count)
@@ -61,7 +63,7 @@ class BluetoothServer:
             #print("inside recv_command")
             data = client_sock.recv(1024).strip()
             print("received [%s]" % data)
-            self.toggleLed(data)
+            self.toggleCmd(data)
 
     def execute(self):
 
@@ -71,9 +73,9 @@ class BluetoothServer:
         self.green_led.setDirectionValue('out')
         self.green_led.setGpioValue(0)
 
-        self.red_led = gpio.gpio(49)
-        self.red_led.setDirectionValue('out')
-        self.red_led.setGpioValue(0)
+        self.sensor = gpio.gpio(49)
+        self.sensor.setDirectionValue('out')
+        self.sensor.setGpioValue(0)
 
         self.pot_on = gpio.gpio(60)
         self.pot_on.setDirectionValue('out')
@@ -98,7 +100,7 @@ class BluetoothServer:
         client_sock, client_info = server_sock.accept()
         print("accepted connection from:", client_info)
 
-        print("\n\n\n\n\n")
+        print("\n\n\n")
 
         #client_sock.send("HELLO ANDROID, FROM BBB") #this should send message to input stream of android
 
