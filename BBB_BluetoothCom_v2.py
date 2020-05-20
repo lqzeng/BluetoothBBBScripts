@@ -27,12 +27,14 @@ class BluetoothServer:
         elif target == 'sensor':
             #print('toggle red')
             self.sensor.toggleGpioValue()
-            # getting just the first bit of receive data, second part of string will determine building name
         elif target[0:12] == 'receive_data':
             #print('sending pot data')
             self.pot_on.toggleGpioValue()
             #get the building number
             self.building_number = target[13:]
+            #reset the sensor_count when the recieve_data is broken
+            if self.pot_on.getGpioValue() == 0:
+                self.sensor_count = 0
         else:
             print('unknown remote command')
 
@@ -100,7 +102,7 @@ class BluetoothServer:
         client_sock, client_info = server_sock.accept()
         print("accepted connection from:", client_info)
 
-        print("\n\n\n")
+        print("\n\n")
 
         #client_sock.send("HELLO ANDROID, FROM BBB") #this should send message to input stream of android
 
